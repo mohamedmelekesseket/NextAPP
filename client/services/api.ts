@@ -1,7 +1,8 @@
 /**
  * Central place for API calls. Set NEXT_PUBLIC_API_URL in `.env.local`
- * (e.g. http://localhost:4000). Uses native fetch — add axios here if you prefer.
+ * (e.g. http://localhost:5000).
  */
+import axios from "axios";
 import type { ContactPayload } from "@/types/contact";
 import type { SubscribePayload } from "@/types/subscribe";
 
@@ -18,45 +19,51 @@ export class ApiError extends Error {
   }
 }
 
-async function requestJson<T>(
-  path: string,
-  init: RequestInit & { json?: unknown } = {}
-): Promise<T> {
-  const { json, ...rest } = init;
+async function requestJson<T>(path: string, payload?: unknown): Promise<T> {
   const url = path.startsWith("http")
     ? path
     : baseUrl
       ? `${baseUrl}${path}`
       : path;
-  const headers = new Headers(rest.headers);
-  if (json !== undefined && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-  const res = await fetch(url, {
-    ...rest,
-    headers,
-    body: json !== undefined ? JSON.stringify(json) : rest.body,
-  });
-
-  const text = await res.text();
-  if (!res.ok) {
-    throw new ApiError(res.statusText || "Request failed", res.status, text);
-  }
-  if (!text) return undefined as T;
   try {
-    return JSON.parse(text) as T;
-  } catch {
-    return text as unknown as T;
+    const response = await axios.post<T>(url, payload, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+      withCredentials: true,
+    });
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const message =
+        (error.response?.data as { message?: string } | undefined)?.message ||
+        error.message ||
+        "Request failed";
+      const status = error.response?.status ?? 500;
+      const body =
+        typeof error.response?.data === "string"
+          ? error.response.data
+          : JSON.stringify(error.response?.data ?? {});
+      throw new ApiError(message, status, body);
+    }
+    throw new ApiError("Request failed", 500);
   }
 }
 
 export async function postContact(body: ContactPayload) {
-  return requestJson<unknown>("/api/contact", { method: "POST", json: body });
+  return requestJson<unknown>("/api/contact", body);
 }
 
 export async function postSubscribe(body: SubscribePayload) {
-  return requestJson<unknown>("/api/subscribe", {
-    method: "POST",
-    json: body,
-  });
+  return requestJson<unknown>("/api/subscribe", body);
+}
+
+export type VolunteerPayload = {
+  name: string;
+  email: string;
+  phone?: string;
+};
+
+export async function postVolunteer(body: VolunteerPayload) {
+  return requestJson<unknown>("/api/volunteer", body);
 }

@@ -1,0 +1,1 @@
+# Logo Fix TODO&#10;&#10;## Steps:&#10;1. [x] Update Navbar.tsx import to logo.png&#10;2. [x] Copy logo.png to public/favicon.png&#10;3. [ ] Update layout.tsx metadata if needed&#10;4. [ ] Restart dev server&#10;5. [ ] Test in browser&#10;
